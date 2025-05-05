@@ -1,0 +1,32 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# .env file containing sensitive environment variables
+.env
+.env.local
+.env.*.local
+
+# Build output
+/build
+/dist
+
+# Temporary files
+*.swp
+*.swo
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# npm package lock
+package-lock.json
+yarn.lock
+
+# React Native (se for usar)
+.expo/

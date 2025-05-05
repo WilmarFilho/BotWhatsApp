@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@langchain/core": "^0.3.51",
+    "@langchain/openai": "^0.5.10",
+    "baileys": "^6.7.16",
+    "cors": "^2.8.5",
+    "crewai": "^1.0.1",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
+}
