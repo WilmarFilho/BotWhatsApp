@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from crewai import Crew
 from agents.atendimento_agent import atendimento_agent
@@ -6,7 +7,13 @@ from agents.financeiro_agent import financeiro_agent
 from tasks.atendimento_tasks import atendimento_task
 from tasks.financeiro_tasks import financeiro_task
 
-# Definindo a chave da OpenAI
+# Carregar variáveis do arquivo .env
+load_dotenv()
+
+# Definindo a chave da OpenAI a partir da variável de ambiente
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if openai_api_key is None:
+    raise ValueError("A chave da OpenAI não foi encontrada na variável de ambiente!")
 
 # Inicializa o servidor Flask
 app = Flask(__name__)

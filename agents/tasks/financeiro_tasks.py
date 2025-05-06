@@ -2,11 +2,11 @@ from crewai import Task
 from agents.financeiro_agent import financeiro_agent
 
 financeiro_task = Task(
-    description=lambda inputs: (
-        f"Você é um agente financeiro. "
-        f"A pergunta do usuário foi: '{inputs['pergunta_usuario']}'. "
-        f"Responda se ela for sobre cobranças, boletos, prazos de pagamento, reembolsos ou qualquer assunto financeiro."
+    description=(
+        "Fornecer uma estimativa de orçamento com base na seguinte pergunta do cliente: '{pergunta_usuario}'. "
+        "Considere quantidades e tipos de serviços mencionados."
     ),
-    expected_output="Uma resposta objetiva e clara sobre assuntos financeiros.",
-    agent=financeiro_agent
+    expected_output="Uma estimativa de preço com base na dúvida apresentada.",
+    agent=financeiro_agent,
+    async_execution=False
 )

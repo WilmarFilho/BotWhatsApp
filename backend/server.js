@@ -1,81 +1,35 @@
-// backend/server.js
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { createWhatsappInstance } from './services/whatsappService.js';
 
-const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@adiwajshing/baileys');
-const { CrewAI } = require('crewai');
-require('dotenv').config();
+// Carrega variáveis do .env
+dotenv.config();
 
+// Inicializa o app Express
 const app = express();
 app.use(cors());
+app.use(express.json()); // Para permitir o envio de JSON no corpo das requisições
+
+// Configura o servidor HTTP e Socket.io
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+app.set('io', io);  // Torna o 'io' acessível nas rotas
 
+// Importa as rotas
+import authRoutes from './routes/authRoutes.js';
+import iaRoutes from './routes/iaRoutes.js';
+import multiAttendantRoutes from './routes/multiAttendantRoutes.js';
+
+// Usa as rotas
+app.use('/api/auth', authRoutes);
+app.use('/api/ia', iaRoutes);
+app.use('/api/multiattendant', multiAttendantRoutes);
+
+// Inicia o servidor
 const PORT = 3001;
-
-// Configuração CrewAI (exemplo simples)
-const crew = new CrewAI({
-  agents: [
-    {
-      name: 'Atendente IA',
-      instructions: 'Responda de forma educada dúvidas comuns dos clientes.',
-      tools: [], // você pode conectar APIs aqui depois
-    }
-  ]
-});
-
-async function startWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth_info');
-  const { version } = await fetchLatestBaileysVersion();
-
-  const sock = makeWASocket({
-    version,
-    auth: state,
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('connection.update', (update) => {
-    const { qr, connection } = update;
-
-    if (qr) {
-      console.log('Enviando QR para frontend...');
-      io.emit('qr', qr);
-    }
-
-    if (connection === 'open') {
-      console.log('Conectado ao WhatsApp!');
-      io.emit('connected');
-    }
-  });
-
-  sock.ev.on('messages.upsert', async ({ messages }) => {
-    const msg = messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-
-    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
-
-    console.log(`Mensagem recebida: ${text}`);
-
-    if (text) {
-      // Envia para o agente IA do Crew
-      const result = await crew.run(text);
-      const resposta = result.output;
-
-      // Envia a resposta para o usuário no WhatsApp
-      await sock.sendMessage(msg.key.remoteJid, { text: resposta });
-    }
-  });
-}
-
-io.on('connection', () => {
-  console.log('Frontend conectado via socket.');
-});
-
-startWhatsApp();
-
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });

@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String               @id @default(uuid())
+  name          String
+  email         String               @unique
+  passwordHash  String
+  whatsappConnections WhatsappConnection[]
+  attendants    Attendant[]
+  createdAt     DateTime             @default(now())
+}
+
+model WhatsappConnection {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  type       ConnectionType
+  phoneNumber String
+  isConnected Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  chats       Chat[]
+}
+
+enum ConnectionType {
+  ia
+  multi
+}
+
+model Attendant {
+  id           String   @id @default(uuid())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  messages     Message[] @relation("AttendantMessages")
+}
+
+model Chat {
+  id                     String   @id @default(uuid())
+  whatsappConnection     WhatsappConnection @relation(fields: [whatsappConnectionId], references: [id])
+  whatsappConnectionId   String
+  leadNumber             String
+  createdAt              DateTime @default(now())
+  lastMessageAt          DateTime @default(now())
+  isActive               Boolean  @default(true)
+  messages               Message[]
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  chat       Chat     @relation(fields: [chatId], references: [id])
+  chatId     String
+  senderType SenderType
+  senderId   String?  // usado se for attendant
+  message    String
+  timestamp  DateTime @default(now())
+
+  attendant  Attendant? @relation("AttendantMessages", fields: [senderId], references: [id])
+}
+
+enum SenderType {
+  lead
+  attendant
+  ai
+}
