@@ -72,3 +72,13 @@ enum SenderType {
   attendant
   ai
 }
+
+
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
