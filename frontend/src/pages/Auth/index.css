@@ -1,0 +1,22 @@
+.formAUTH {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+    flex-direction: column;
+    width: 300px;
+}
+
+.formAUTH form {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+}
+
+.formAUTH div {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 8px;
+}
+

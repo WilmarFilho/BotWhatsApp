@@ -1,0 +1,14 @@
+body {
+  margin: 0;
+  font-family:'Comfortaa', sans-serif;
+  height: 100vh;
+  background-color: #097047;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+h2 {
+  margin: 0;
+}
