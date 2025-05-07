@@ -9,20 +9,20 @@ dotenv.config();
 // Inicializa o app Express
 const app = express();
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json());
 
 // Configura o servidor HTTP e Socket.io
 const server = http.createServer(app);
 
 // Importa as rotas
-import authRoutes from './routes/authRoutes.js';
-import iaRoutes from './routes/iaRoutes.js';
-import ChatRoutes from './routes/messageRoutes.js';
+import authRoutes from './routes/AuthRoutes.js';
+import iaRoutes from './routes/ConnectionIARoutes.js';
+import ChatRoutes from './routes/ChatsRoutes.js';
 
 // Usa as rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/ia', iaRoutes);  // Prefixo para rotas de IA
-app.use('/api/chats', ChatRoutes);  
+app.use('/api/chats', ChatRoutes);
 
 
 
@@ -30,7 +30,11 @@ app.use('/api/chats', ChatRoutes);
 import { Server } from 'socket.io';
 import setupIANamespace from './sockets/ia.namespace.js';
 const io = new Server(server, {
-  cors: { origin: '*' },
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
 });
 const iaNamespace = io.of('/connectIA');
 setupIANamespace(iaNamespace);

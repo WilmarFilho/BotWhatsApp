@@ -1,11 +1,12 @@
 import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from 'baileys';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
-import { saveMessage } from './messageService.js';
+import fs from 'fs';
+import { saveMessage } from './ChatsService.js';
 
 const prisma = new PrismaClient();
 
-async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId agora
+async function startWhatsApp(handlers, instanceId, userId) {
   try {
     const authFolder = path.resolve(`./sessions/${instanceId}`);
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
@@ -16,78 +17,69 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async ({ qr, connection, lastDisconnect }) => {
-      if (qr) handlers.emitQR(qr);
+      if (qr) {
+        console.log(`Novo QR code gerado para ${userId}`);
+        handlers.emitQR(qr);
+      }
 
       if (connection === 'open') {
+        let phoneNumber = null;
+        for (let i = 0; i < 5; i++) {
+          if (sock.user?.id) {
+            phoneNumber = sock.user.id.split(':')[0] || null;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
-        const phoneNumber = sock.user?.id.split(':')[0] || 'N/A';
+        console.log(`Conexão aberta para ${userId}, phoneNumber: ${phoneNumber}`);
 
-        // Use cleanUserId em TODAS as chamadas do Prisma:
         await prisma.whatsappConnection.upsert({
           where: {
             userId_type_unique: {
-              userId: userId, // Usa o ID limpo
+              userId,
               type: 'ia'
             }
           },
           update: { isConnected: true, phoneNumber },
           create: {
-            userId: userId,
+            userId,
             type: 'ia',
             phoneNumber,
             isConnected: true
           }
         });
 
-        handlers.onConnected();
+        handlers.onConnected(phoneNumber);
       }
 
       if (connection === 'close') {
+        const statusCode = lastDisconnect?.error?.output?.statusCode || 0;
+        const isAuthError = statusCode === 401;
+
         try {
-          // 1. Atualiza o BD para "desconectado"
           await prisma.whatsappConnection.updateMany({
-            where: {
-              userId: userId, // Use o cleanUserId corrigido
-              type: 'ia'
-            },
-            data: {
-              isConnected: false,
-              phoneNumber: '00' // Opcional: limpa o número
-            },
+            where: { userId, type: 'ia' },
+            data: { isConnected: false, phoneNumber: null },
           });
 
-          // 2. Limpa as credenciais de sessão local
-          const authFolder = path.resolve(`./sessions/${instanceId}`);
-          try {
+          if (isAuthError) {
+            handlers.onDisconnected({
+              code: statusCode,
+              message: 'Erro de autenticação - Requer novo QR Code'
+            });
+            
             fs.rmSync(authFolder, { recursive: true, force: true });
             console.log(`Credenciais da instância ${instanceId} removidas`);
-          } catch (fsError) {
-            console.error('Erro ao limpar credenciais:', fsError);
-          }
-
-          // 3. Notifica o frontend
-          if (handlers.onDisconnected) {
-            handlers.onDisconnected({
-              code: lastDisconnect?.error?.output?.statusCode || 0,
-              message: "Desconectado do WhatsApp"
-            });
-          }
-
-          // 4. Reconexão automática (se não for erro de autenticação)
-          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
-          if (shouldReconnect) {
-            console.log('Reconectando em 5 segundos...');
-            setTimeout(() => startWhatsApp(handlers, instanceId, userId), 5000);
-          } else {
-            console.log('Erro de autenticação - Requer novo QR Code');
-          }
-
-        } catch (dbError) {
-          console.error('Erro durante desconexão:', dbError);
-          // Garante que o frontend seja notificado mesmo em caso de erro
-          if (handlers.onDisconnected) handlers.onDisconnected({
+            
+            console.log(`Reiniciando instância para ${userId} devido a erro 401`);
+            startWhatsApp(handlers, instanceId, userId);
+          } 
+        } catch (err) {
+          console.error(`Erro durante desconexão para ${userId}:`, err);
+          handlers.onDisconnected({
             code: 500,
-            message: "Erro interno durante desconexão"
+            message: 'Erro interno durante desconexão'
           });
         }
       }
@@ -95,14 +87,13 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
       const msg = messages[0];
-      if (!msg.message ) return; //msg.key.fromMe
+      if (!msg.message || msg.key.fromMe) return;
 
       const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
       if (!text?.toLowerCase().includes('suporte')) return;
 
       const leadNumber = msg.key.remoteJid.split('@')[0];
-
-      const type = 'ia'
+      const type = 'ia';
 
       const connectionId = await prisma.whatsappConnection.findFirst({
         where: {
@@ -113,8 +104,7 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
           id: true
         }
       });
-    
-      // Salva mensagem do lead
+
       await saveMessage({
         connectionId: connectionId.id,
         leadNumber,
@@ -122,7 +112,7 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
         messageText: text
       });
 
-      /*try {
+      try {
         const response = await fetch('http://localhost:5000/api/crewai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -132,20 +122,21 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
         const data = await response.json();
         if (data?.response) {
           await sock.sendMessage(msg.key.remoteJid, { text: data.response });
-
-          handlers.onIAResponse({
-            remetente: msg.key.remoteJid,
-            pergunta: text,
-            resposta: data.response
-          });
         }
       } catch (err) {
         console.error('Erro ao chamar IA:', err);
-      }*/
+      }
     });
 
   } catch (error) {
     console.error(`Erro na instância ${instanceId}:`, error);
+    handlers.onDisconnected({
+      code: 500,
+      message: 'Erro interno ao iniciar WhatsApp'
+    });
+    if (activeInstances[userId]) {
+      delete activeInstances[userId];
+    }
   }
 }
 
