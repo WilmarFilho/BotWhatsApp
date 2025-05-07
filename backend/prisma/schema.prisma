@@ -16,7 +16,6 @@ model User {
   attendants    Attendant[]
   createdAt     DateTime             @default(now())
 }
-
 model WhatsappConnection {
   id         String   @id @default(uuid())
   user       User     @relation(fields: [userId], references: [id])
@@ -26,6 +25,8 @@ model WhatsappConnection {
   isConnected Boolean  @default(false)
   createdAt   DateTime @default(now())
   chats       Chat[]
+
+  @@unique([userId, type], name: "userId_type_unique")
 }
 
 enum ConnectionType {

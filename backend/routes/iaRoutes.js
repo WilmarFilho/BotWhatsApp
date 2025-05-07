@@ -1,8 +1,8 @@
 import express from 'express';
-import { connectIA } from '../controllers/iaController.js';
+import { getConnectionStatus } from '../controllers/iaController.js';
 
 const router = express.Router();
 
-router.post('/connect', connectIA);
+router.get('/status/:userId', getConnectionStatus);
 
 export default router;
