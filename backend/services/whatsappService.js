@@ -1,6 +1,7 @@
 import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from 'baileys';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
+import { saveMessage } from './messageService.js';
 
 const prisma = new PrismaClient();
 
@@ -94,12 +95,34 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
       const msg = messages[0];
-      if (!msg.message || msg.key.fromMe) return;
+      if (!msg.message ) return; //msg.key.fromMe
 
       const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
       if (!text?.toLowerCase().includes('suporte')) return;
 
-      try {
+      const leadNumber = msg.key.remoteJid.split('@')[0];
+
+      const type = 'ia'
+
+      const connectionId = await prisma.whatsappConnection.findFirst({
+        where: {
+          userId,
+          type
+        },
+        select: {
+          id: true
+        }
+      });
+    
+      // Salva mensagem do lead
+      await saveMessage({
+        connectionId: connectionId.id,
+        leadNumber,
+        senderType: 'lead',
+        messageText: text
+      });
+
+      /*try {
         const response = await fetch('http://localhost:5000/api/crewai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -118,7 +141,7 @@ async function startWhatsApp(handlers, instanceId, userId) { // Recebe userId ag
         }
       } catch (err) {
         console.error('Erro ao chamar IA:', err);
-      }
+      }*/
     });
 
   } catch (error) {

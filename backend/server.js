@@ -17,10 +17,12 @@ const server = http.createServer(app);
 // Importa as rotas
 import authRoutes from './routes/authRoutes.js';
 import iaRoutes from './routes/iaRoutes.js';
+import ChatRoutes from './routes/messageRoutes.js';
 
 // Usa as rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/ia', iaRoutes);  // Prefixo para rotas de IA
+app.use('/api/chats', ChatRoutes);  
 
 
 

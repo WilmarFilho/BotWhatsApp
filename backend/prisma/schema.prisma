@@ -46,15 +46,19 @@ model Attendant {
 }
 
 model Chat {
-  id                     String   @id @default(uuid())
-  whatsappConnection     WhatsappConnection @relation(fields: [whatsappConnectionId], references: [id])
-  whatsappConnectionId   String
-  leadNumber             String
-  createdAt              DateTime @default(now())
-  lastMessageAt          DateTime @default(now())
-  isActive               Boolean  @default(true)
-  messages               Message[]
+  id                    String   @id @default(uuid())
+  whatsappConnectionId  String
+  whatsappConnection    WhatsappConnection @relation(fields: [whatsappConnectionId], references: [id])
+  leadNumber            String
+  lastMessageAt         DateTime
+  isActive              Boolean
+  createdAt             DateTime @default(now())
+
+  messages              Message[]
+
+  @@unique([whatsappConnectionId, leadNumber]) // <- ESTA LINHA CRIA A CHAVE COMPOSTA
 }
+
 
 model Message {
   id         String   @id @default(uuid())
